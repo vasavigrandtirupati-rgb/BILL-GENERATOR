@@ -10,13 +10,6 @@ export const hotelData = {
   gst: "37XXXXX1234X1Z5"
 };
 
-export const roomTypes = [
-  { id: 1, name: "Standard AC Room", price: 2500 },
-  { id: 2, name: "Deluxe AC Room", price: 3500 },
-  { id: 3, name: "Premium AC Room", price: 4500 },
-  { id: 4, name: "Suite", price: 6500 },
-  { id: 5, name: "Family Suite", price: 8500 }
-];
 
 export const billTypes = [
   { id: 1, name: "Booking Confirmation", code: "CONF" },
@@ -25,11 +18,6 @@ export const billTypes = [
   { id: 4, name: "Advance Booking", code: "ADV" }
 ];
 
-export const taxRates = {
-  cgst: 6,
-  sgst: 6,
-  total: 12
-};
 
 // Bill number generation
 let billCounter = JSON.parse(localStorage.getItem('vasavi_bill_counter')) || 1;
@@ -87,8 +75,8 @@ export const defaultFormData = {
   checkOutDate: '',
   checkOutTime: '',
   rooms: 1,
-  roomType: roomTypes[0].name,
-  unitPrice: roomTypes[0].price,
+  roomType: '',
+  unitPrice: 0,
   advancePaid: 0,
   billType: billTypes[0].name,
   specialRequests: ''

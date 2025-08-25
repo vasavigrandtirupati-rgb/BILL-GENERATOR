@@ -29,20 +29,138 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
     );
   }
 
-  const downloadPDF = () => {
-    // In a real implementation, this would generate a PDF
-    toast({ 
-      title: "PDF Download", 
-      description: "PDF generation feature will be implemented with a PDF library", 
-    });
+  const downloadPDF = async () => {
+    try {
+      const jsPDF = (await import('jspdf')).default;
+      const html2canvas = (await import('html2canvas')).default;
+      
+      const element = document.querySelector('.bill-content') as HTMLElement;
+      if (!element) return;
+      
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 190;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 10;
+      
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight + 10;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      pdf.save(`${billData.billNumber}-${billData.guestName}.pdf`);
+      toast({ title: "Success", description: "PDF downloaded successfully!" });
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to generate PDF. Please try again.", 
+        variant: "destructive"
+      });
+    }
   };
 
-  const downloadDOCX = () => {
-    // In a real implementation, this would generate a DOCX
-    toast({ 
-      title: "DOCX Download", 
-      description: "DOCX generation feature will be implemented with a document library", 
-    });
+  const downloadDOCX = async () => {
+    try {
+      const { saveAs } = await import('file-saver');
+      
+      // Create HTML content for DOCX
+      const htmlContent = `
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .hotel-name { font-size: 24px; font-weight: bold; }
+            .bill-details { margin: 20px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+            .summary { margin-top: 20px; }
+            .total { font-weight: bold; font-size: 18px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="hotel-name">${hotelData.name}</div>
+            <div>${hotelData.address}</div>
+            <div>Phone: ${hotelData.phone} | WhatsApp: ${hotelData.whatsapp}</div>
+            <div>Email: ${hotelData.email} | GST: ${hotelData.gst}</div>
+          </div>
+          
+          <div class="bill-details">
+            <h2>${billData.billType}</h2>
+            <p>Bill No: ${billData.billNumber}</p>
+            <p>Date: ${billData.issueDate}</p>
+            <p>Time: ${billData.issueTime}</p>
+          </div>
+          
+          <div class="guest-details">
+            <h3>Guest Information</h3>
+            <p>Name: ${billData.guestName}</p>
+            <p>Contact: ${billData.contactNo}</p>
+            ${billData.address ? `<p>Address: ${billData.address}</p>` : ''}
+            <p>Guests: ${billData.adults} Adults, ${billData.children} Children</p>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Rooms</th>
+                <th>Days</th>
+                <th>Rate (₹)</th>
+                <th>Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${billData.roomType}</td>
+                <td>${billData.rooms}</td>
+                <td>${billData.calculations.days}</td>
+                <td>₹${billData.unitPrice.toLocaleString()}</td>
+                <td>₹${billData.calculations.total.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="summary">
+            <p class="total">Total: ₹${billData.calculations.total.toLocaleString()}</p>
+            <p>Advance Paid: ₹${billData.advancePaid.toLocaleString()}</p>
+            <p class="total">Balance Due: ₹${billData.calculations.balance.toLocaleString()}</p>
+          </div>
+          
+          <div style="margin-top: 50px;">
+            <p>Thank you for choosing ${hotelData.name}. We hope you have a pleasant stay!</p>
+            <br><br>
+            <p>Authorized Signatory</p>
+            <p>_________________________</p>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      const blob = new Blob([htmlContent], { type: 'application/msword' });
+      saveAs(blob, `${billData.billNumber}-${billData.guestName}.doc`);
+      toast({ title: "Success", description: "DOCX downloaded successfully!" });
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to generate DOCX. Please try again.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   const printBill = () => {
@@ -89,7 +207,7 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
 
           {/* Bill Preview */}
           <Card className="bg-card shadow-premium border-gold/20 print:shadow-none print:border-none">
-            <div className="p-8 print:p-4">
+            <div className="p-8 print:p-4 bill-content">
               {/* Hotel Header */}
               <div className="text-center mb-8 print:mb-6">
                 <div className="flex items-center justify-center gap-3 mb-4">
@@ -176,19 +294,6 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
               {/* Bill Summary */}
               <div className="flex justify-end mb-8">
                 <div className="w-full max-w-md space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>₹{billData.calculations.subtotal.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>CGST (6%):</span>
-                    <span>₹{(billData.calculations.tax / 2).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>SGST (6%):</span>
-                    <span>₹{(billData.calculations.tax / 2).toLocaleString()}</span>
-                  </div>
-                  <Separator />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total:</span>
                     <span className="text-gold">₹{billData.calculations.total.toLocaleString()}</span>

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Calculator, FileText, Users, Calendar, MapPin, Phone } from "lucide-react";
-import { roomTypes, billTypes, taxRates, defaultFormData, generateBillNumber } from "../data/data.js";
+import { billTypes, defaultFormData, generateBillNumber } from "../data/data.js";
 import { useToast } from "../hooks/use-toast";
 
 interface BillGeneratorProps {
@@ -40,26 +40,16 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
     const timeDiff = checkOut.getTime() - checkIn.getTime();
     const days = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)));
 
-    const subtotal = days * formData.unitPrice * formData.rooms;
-    const tax = subtotal * (taxRates.total / 100);
-    const total = subtotal + tax;
+    const total = days * formData.unitPrice * formData.rooms;
     const balance = total - formData.advancePaid;
 
-    setCalculations({ days, subtotal, tax, total, balance });
+    setCalculations({ days, subtotal: total, tax: 0, total, balance });
   };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRoomTypeChange = (roomTypeName: string) => {
-    const selectedRoom = roomTypes.find(room => room.name === roomTypeName);
-    setFormData(prev => ({
-      ...prev,
-      roomType: roomTypeName,
-      unitPrice: selectedRoom ? selectedRoom.price : 0
-    }));
-  };
 
   const validateForm = () => {
     if (!formData.guestName.trim()) {
@@ -255,18 +245,13 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
 
               <div className="space-y-2">
                 <Label htmlFor="roomType">Room Type *</Label>
-                <Select value={formData.roomType} onValueChange={handleRoomTypeChange}>
-                  <SelectTrigger className="border-gold/30 focus:ring-gold">
-                    <SelectValue placeholder="Select room type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roomTypes.map((room) => (
-                      <SelectItem key={room.id} value={room.name}>
-                        {room.name} - ₹{room.price}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="roomType"
+                  placeholder="Enter room type (e.g., Deluxe AC Room)"
+                  value={formData.roomType}
+                  onChange={(e) => handleInputChange('roomType', e.target.value)}
+                  className="border-gold/30 focus:ring-gold"
+                />
               </div>
 
               <div className="space-y-2">
@@ -325,8 +310,8 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
                 <CardContent className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <p><span className="font-medium">No. of Days:</span> {calculations.days}</p>
-                    <p><span className="font-medium">Subtotal:</span> ₹{calculations.subtotal.toLocaleString()}</p>
-                    <p><span className="font-medium">Tax (12%):</span> ₹{calculations.tax.toLocaleString()}</p>
+                    <p><span className="font-medium">Rooms:</span> {formData.rooms}</p>
+                    <p><span className="font-medium">Rate per day:</span> ₹{formData.unitPrice.toLocaleString()}</p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-lg"><span className="font-bold">Total:</span> <span className="text-gold font-bold">₹{calculations.total.toLocaleString()}</span></p>
