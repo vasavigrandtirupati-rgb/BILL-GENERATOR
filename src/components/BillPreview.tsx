@@ -317,8 +317,8 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                   Thank you for choosing {hotelData.name}. We hope you have a pleasant stay!
                 </p>
                 <div className="pt-8">
-                  <p className="text-sm font-medium">Authorized Signatory</p>
-                  <div className="border-t border-border w-48 mx-auto mt-8"></div>
+                  
+                  <div className="border-t border-border w-full inclined italic text-xs mx-auto mt-8"><p className="text-sm font-medium">Note:</p>This is computer generated bill no signature is needed</div>
                 </div>
               </div>
             </div>

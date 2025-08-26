@@ -2,12 +2,12 @@
 export const hotelData = {
   name: "Vasavi Grand",
   location: "Tirupati",
-  address: "123 Temple Street, Tirupati, Andhra Pradesh - 517501",
-  phone: "+91 9876543210",
-  whatsapp: "+91 9876543210",
-  email: "info@vasavigrand.com",
-  website: "www.vasavigrand.com",
-  gst: "37XXXXX1234X1Z5"
+  address: " Rajareddy Nagar, Medigo Hospital lane, road, Mangalam, Tirupati, Andhra Pradesh 517507",
+  phone: "+91 9392379785",
+  whatsapp: "+91 9392379785",
+  email: "vasavigrandtirupati@gmail.com",
+  website: "www.vasavigrandthirupati.in",
+  gst: "XXXXXXXXXXX"
 };
 
 

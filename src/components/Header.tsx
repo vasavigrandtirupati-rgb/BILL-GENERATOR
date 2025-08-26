@@ -13,15 +13,20 @@ const Header = () => {
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-gold rounded-full animate-pulse"></div>
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+              <h1 className="text-2xl md:text-3xl font-display font-bold text-black">
                 {hotelData.name}
               </h1>
-              <p className="text-sm text-muted-foreground font-medium">
+              <p className="text-sm text-white font-medium">
                 {hotelData.location} • Premium Hospitality
               </p>
             </div>
           </div>
 
+                          <div>
+            <p className="text-sm text-white font-medium text-center">
+             Design and Developed by:<p className="text-lg font-semibold"> Revanth kumar Yallanur </p> </p>
+
+                          </div>
           {/* Contact Info */}
           <div className="flex items-center gap-6 text-sm">
             <div className="flex items-center gap-2 px-3 py-2 bg-gradient-silver rounded-lg shadow-card">

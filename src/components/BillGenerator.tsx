@@ -56,7 +56,7 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
       toast({ title: "Validation Error", description: "Guest name is required", variant: "destructive" });
       return false;
     }
-    if (!formData.contactNo.match(/^[6-9]\d{9}$/)) {
+    if (!formData.contactNo.trim().match(/^[6-9]\d{9}$/)) {
       toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile number", variant: "destructive" });
       return false;
     }
