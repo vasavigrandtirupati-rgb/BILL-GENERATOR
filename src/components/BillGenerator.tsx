@@ -42,7 +42,7 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
 
     // Calculate total for all rooms
     const roomsTotal = formData.roomDetails.reduce((total, room) => {
-      return total + (days * room.unitPrice);
+      return total + (days * room.unitPrice * (room.count || 1));
     }, 0);
 
     // Add beverages if it's a checkout bill
@@ -58,14 +58,36 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
   };
 
   const handleRoomsChange = (roomCount: number) => {
-    const newRoomDetails = Array(roomCount).fill(null).map((_, index) => 
-      formData.roomDetails[index] || { roomType: '', unitPrice: 0 }
-    );
+    // Keep existing room types if they exist, otherwise start with one room type
+    const existingRoomDetails = formData.roomDetails.length > 0 ? formData.roomDetails : [{ roomType: '', unitPrice: 0, count: roomCount }];
     setFormData(prev => ({ 
       ...prev, 
       rooms: roomCount,
-      roomDetails: newRoomDetails 
+      roomDetails: existingRoomDetails.map(room => ({ ...room, count: Math.min(room.count || 1, roomCount) }))
     }));
+  };
+
+  const addRoomType = () => {
+    const remainingRooms = formData.rooms - getTotalRoomCount();
+    if (remainingRooms > 0) {
+      setFormData(prev => ({
+        ...prev,
+        roomDetails: [...prev.roomDetails, { roomType: '', unitPrice: 0, count: Math.min(1, remainingRooms) }]
+      }));
+    }
+  };
+
+  const removeRoomType = (index: number) => {
+    if (formData.roomDetails.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        roomDetails: prev.roomDetails.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const getTotalRoomCount = () => {
+    return formData.roomDetails.reduce((total, room) => total + (room.count || 0), 0);
   };
 
   const handleRoomDetailChange = (index: number, field: string, value: any) => {
@@ -92,14 +114,24 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
       return false;
     }
     // Validate room details
+    const totalRoomCount = getTotalRoomCount();
+    if (totalRoomCount !== formData.rooms) {
+      toast({ title: "Validation Error", description: `Total room count (${totalRoomCount}) must equal selected number of rooms (${formData.rooms})`, variant: "destructive" });
+      return false;
+    }
+    
     for (let i = 0; i < formData.roomDetails.length; i++) {
       const room = formData.roomDetails[i];
       if (!room.roomType.trim()) {
-        toast({ title: "Validation Error", description: `Room ${i + 1} type is required`, variant: "destructive" });
+        toast({ title: "Validation Error", description: `Room type ${i + 1} is required`, variant: "destructive" });
         return false;
       }
       if (!room.unitPrice || room.unitPrice <= 0) {
-        toast({ title: "Validation Error", description: `Room ${i + 1} unit price must be greater than 0`, variant: "destructive" });
+        toast({ title: "Validation Error", description: `Room type ${i + 1} unit price must be greater than 0`, variant: "destructive" });
+        return false;
+      }
+      if (!room.count || room.count <= 0) {
+        toast({ title: "Validation Error", description: `Room type ${i + 1} count must be greater than 0`, variant: "destructive" });
         return false;
       }
     }
@@ -285,8 +317,21 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
               {/* Dynamic Room Type and Price Fields */}
               {formData.roomDetails.map((room, index) => (
                 <Card key={index} className="bg-gradient-silver border-gold/30 p-4">
-                  <h4 className="font-medium text-gold mb-4">Room {index + 1} Details</h4>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-medium text-gold">Room Type {index + 1}</h4>
+                    {formData.roomDetails.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeRoomType(index)}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor={`roomType-${index}`}>Room Type *</Label>
                       <Input
@@ -308,9 +353,37 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
                         className="border-gold/30 focus:ring-gold"
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`count-${index}`}>Count *</Label>
+                      <Input
+                        id={`count-${index}`}
+                        type="number"
+                        min="1"
+                        max={formData.rooms}
+                        value={room.count || 1}
+                        onChange={(e) => handleRoomDetailChange(index, 'count', parseInt(e.target.value) || 1)}
+                        className="border-gold/30 focus:ring-gold"
+                      />
+                    </div>
                   </div>
                 </Card>
               ))}
+              
+              {getTotalRoomCount() < formData.rooms && (
+                <div className="text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addRoomType}
+                    className="border-gold/30 text-gold hover:bg-gold/10"
+                  >
+                    Add Different Room Type
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Rooms allocated: {getTotalRoomCount()} / {formData.rooms}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Bill Type & Payment */}
@@ -376,7 +449,7 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <p><span className="font-medium">No. of Days:</span> {calculations.days}</p>
-                      <p><span className="font-medium">Total Rooms:</span> {formData.rooms}</p>
+                      <p><span className="font-medium">Total Rooms:</span> {getTotalRoomCount()}</p>
                     </div>
                     <div className="space-y-2">
                       <p className="text-lg"><span className="font-bold">Subtotal:</span> <span className="text-gold font-bold">₹{calculations.subtotal.toLocaleString()}</span></p>
@@ -393,8 +466,8 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
                     <h4 className="font-medium text-gold mb-2">Room Breakdown:</h4>
                     {formData.roomDetails.map((room, index) => (
                       <div key={index} className="flex justify-between items-center py-1 text-sm">
-                        <span>Room {index + 1}: {room.roomType || 'Not specified'}</span>
-                        <span>₹{room.unitPrice.toLocaleString()} × {calculations.days} days = ₹{(room.unitPrice * calculations.days).toLocaleString()}</span>
+                        <span>{room.count || 1}× {room.roomType || 'Not specified'}</span>
+                        <span>₹{room.unitPrice.toLocaleString()} × {calculations.days} days × {room.count || 1} = ₹{(room.unitPrice * calculations.days * (room.count || 1)).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

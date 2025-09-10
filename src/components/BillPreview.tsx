@@ -124,14 +124,14 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                </tr>
              </thead>
              <tbody>
-               ${billData.roomDetails.map((room, index) => 
-                 `<tr>
-                   <td>${room.roomType} (Room ${index + 1})</td>
-                   <td>${billData.calculations.days}</td>
-                   <td>₹${room.unitPrice.toLocaleString()}</td>
-                   <td>₹${(room.unitPrice * billData.calculations.days).toLocaleString()}</td>
-                 </tr>`
-               ).join('')}
+                ${billData.roomDetails.map((room, index) => 
+                  `<tr>
+                    <td>${room.count}× ${room.roomType}</td>
+                    <td>${billData.calculations.days}</td>
+                    <td>₹${room.unitPrice.toLocaleString()}</td>
+                    <td>₹${(room.unitPrice * billData.calculations.days * (room.count || 1)).toLocaleString()}</td>
+                  </tr>`
+                ).join('')}
                ${billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 ? 
                  `<tr>
                    <td>Beverages</td>
@@ -270,7 +270,7 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                      <p><span className="font-medium">Check-In:</span> {billData.checkInDate} {billData.checkInTime}</p>
                      <p><span className="font-medium">Check-Out:</span> {billData.checkOutDate} {billData.checkOutTime}</p>
                      <p><span className="font-medium">No. of Days:</span> {billData.calculations.days}</p>
-                     <p><span className="font-medium">Total Rooms:</span> {billData.rooms}</p>
+                     <p><span className="font-medium">Total Rooms:</span> {billData.roomDetails.reduce((total, room) => total + (room.count || 1), 0)}</p>
                    </CardContent>
                 </Card>
               </div>
@@ -287,14 +287,14 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                      </tr>
                    </thead>
                    <tbody>
-                     {billData.roomDetails.map((room, index) => (
-                       <tr key={index}>
-                         <td className="border border-border px-4 py-3">{room.roomType} (Room {index + 1})</td>
-                         <td className="border border-border px-4 py-3 text-center">{billData.calculations.days}</td>
-                         <td className="border border-border px-4 py-3 text-right">₹{room.unitPrice.toLocaleString()}</td>
-                         <td className="border border-border px-4 py-3 text-right font-medium">₹{(room.unitPrice * billData.calculations.days).toLocaleString()}</td>
-                       </tr>
-                     ))}
+                      {billData.roomDetails.map((room, index) => (
+                        <tr key={index}>
+                          <td className="border border-border px-4 py-3">{room.count}× {room.roomType}</td>
+                          <td className="border border-border px-4 py-3 text-center">{billData.calculations.days}</td>
+                          <td className="border border-border px-4 py-3 text-right">₹{room.unitPrice.toLocaleString()}</td>
+                          <td className="border border-border px-4 py-3 text-right font-medium">₹{(room.unitPrice * billData.calculations.days * (room.count || 1)).toLocaleString()}</td>
+                        </tr>
+                      ))}
                      {billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 && (
                        <tr>
                          <td className="border border-border px-4 py-3">Beverages</td>
