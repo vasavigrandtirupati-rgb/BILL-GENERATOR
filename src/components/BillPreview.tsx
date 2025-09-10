@@ -114,26 +114,34 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
             <p>Guests: ${billData.adults} Adults, ${billData.children} Children</p>
           </div>
           
-          <table>
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Rooms</th>
-                <th>Days</th>
-                <th>Rate (₹)</th>
-                <th>Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>${billData.roomType}</td>
-                <td>${billData.rooms}</td>
-                <td>${billData.calculations.days}</td>
-                <td>₹${billData.unitPrice.toLocaleString()}</td>
-                <td>₹${billData.calculations.total.toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
+           <table>
+             <thead>
+               <tr>
+                 <th>Description</th>
+                 <th>Days</th>
+                 <th>Rate (₹)</th>
+                 <th>Amount (₹)</th>
+               </tr>
+             </thead>
+             <tbody>
+               ${billData.roomDetails.map((room, index) => 
+                 `<tr>
+                   <td>${room.roomType} (Room ${index + 1})</td>
+                   <td>${billData.calculations.days}</td>
+                   <td>₹${room.unitPrice.toLocaleString()}</td>
+                   <td>₹${(room.unitPrice * billData.calculations.days).toLocaleString()}</td>
+                 </tr>`
+               ).join('')}
+               ${billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 ? 
+                 `<tr>
+                   <td>Beverages</td>
+                   <td>-</td>
+                   <td>-</td>
+                   <td>₹${billData.beveragesBill.toLocaleString()}</td>
+                 </tr>` : ''
+               }
+             </tbody>
+           </table>
           
           <div class="summary">
             <p class="total">Total: ₹${billData.calculations.total.toLocaleString()}</p>
@@ -258,38 +266,46 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg">Booking Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <p><span className="font-medium">Check-In:</span> {billData.checkInDate} {billData.checkInTime}</p>
-                    <p><span className="font-medium">Check-Out:</span> {billData.checkOutDate} {billData.checkOutTime}</p>
-                    <p><span className="font-medium">No. of Days:</span> {billData.calculations.days}</p>
-                    <p><span className="font-medium">Room Type:</span> {billData.roomType}</p>
-                  </CardContent>
+                   <CardContent className="space-y-2 text-sm">
+                     <p><span className="font-medium">Check-In:</span> {billData.checkInDate} {billData.checkInTime}</p>
+                     <p><span className="font-medium">Check-Out:</span> {billData.checkOutDate} {billData.checkOutTime}</p>
+                     <p><span className="font-medium">No. of Days:</span> {billData.calculations.days}</p>
+                     <p><span className="font-medium">Total Rooms:</span> {billData.rooms}</p>
+                   </CardContent>
                 </Card>
               </div>
 
-              {/* Bill Details Table */}
-              <div className="overflow-x-auto mb-6">
-                <table className="w-full border border-border">
-                  <thead className="bg-gradient-silver">
-                    <tr>
-                      <th className="border border-border px-4 py-3 text-left font-medium">Description</th>
-                      <th className="border border-border px-4 py-3 text-center font-medium">Rooms</th>
-                      <th className="border border-border px-4 py-3 text-center font-medium">Days</th>
-                      <th className="border border-border px-4 py-3 text-right font-medium">Rate (₹)</th>
-                      <th className="border border-border px-4 py-3 text-right font-medium">Amount (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border border-border px-4 py-3">{billData.roomType}</td>
-                      <td className="border border-border px-4 py-3 text-center">{billData.rooms}</td>
-                      <td className="border border-border px-4 py-3 text-center">{billData.calculations.days}</td>
-                      <td className="border border-border px-4 py-3 text-right">₹{billData.unitPrice.toLocaleString()}</td>
-                      <td className="border border-border px-4 py-3 text-right font-medium">₹{billData.calculations.subtotal.toLocaleString()}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+               {/* Bill Details Table */}
+               <div className="overflow-x-auto mb-6">
+                 <table className="w-full border border-border">
+                   <thead className="bg-gradient-silver">
+                     <tr>
+                       <th className="border border-border px-4 py-3 text-left font-medium">Description</th>
+                       <th className="border border-border px-4 py-3 text-center font-medium">Days</th>
+                       <th className="border border-border px-4 py-3 text-right font-medium">Rate (₹)</th>
+                       <th className="border border-border px-4 py-3 text-right font-medium">Amount (₹)</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {billData.roomDetails.map((room, index) => (
+                       <tr key={index}>
+                         <td className="border border-border px-4 py-3">{room.roomType} (Room {index + 1})</td>
+                         <td className="border border-border px-4 py-3 text-center">{billData.calculations.days}</td>
+                         <td className="border border-border px-4 py-3 text-right">₹{room.unitPrice.toLocaleString()}</td>
+                         <td className="border border-border px-4 py-3 text-right font-medium">₹{(room.unitPrice * billData.calculations.days).toLocaleString()}</td>
+                       </tr>
+                     ))}
+                     {billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 && (
+                       <tr>
+                         <td className="border border-border px-4 py-3">Beverages</td>
+                         <td className="border border-border px-4 py-3 text-center">-</td>
+                         <td className="border border-border px-4 py-3 text-right">-</td>
+                         <td className="border border-border px-4 py-3 text-right font-medium">₹{billData.beveragesBill.toLocaleString()}</td>
+                       </tr>
+                     )}
+                   </tbody>
+                 </table>
+               </div>
 
               {/* Bill Summary */}
               <div className="flex justify-end mb-8">

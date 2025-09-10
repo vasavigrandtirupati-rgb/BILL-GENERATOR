@@ -27,7 +27,7 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
   // Auto-calculate when relevant fields change
   useEffect(() => {
     calculateBill();
-  }, [formData.checkInDate, formData.checkOutDate, formData.rooms, formData.unitPrice, formData.advancePaid]);
+  }, [formData.checkInDate, formData.checkOutDate, formData.rooms, formData.roomDetails, formData.advancePaid, formData.beveragesBill]);
 
   const calculateBill = () => {
     if (!formData.checkInDate || !formData.checkOutDate) {
@@ -40,14 +40,41 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
     const timeDiff = checkOut.getTime() - checkIn.getTime();
     const days = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)));
 
-    const total = days * formData.unitPrice * formData.rooms;
-    const balance = total - formData.advancePaid;
+    // Calculate total for all rooms
+    const roomsTotal = formData.roomDetails.reduce((total, room) => {
+      return total + (days * room.unitPrice);
+    }, 0);
 
-    setCalculations({ days, subtotal: total, tax: 0, total, balance });
+    // Add beverages if it's a checkout bill
+    const beveragesAmount = formData.billType === 'Check-Out Bill' ? formData.beveragesBill : 0;
+    const subtotal = roomsTotal + beveragesAmount;
+    const balance = subtotal - formData.advancePaid;
+
+    setCalculations({ days, subtotal, tax: 0, total: subtotal, balance });
   };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleRoomsChange = (roomCount: number) => {
+    const newRoomDetails = Array(roomCount).fill(null).map((_, index) => 
+      formData.roomDetails[index] || { roomType: '', unitPrice: 0 }
+    );
+    setFormData(prev => ({ 
+      ...prev, 
+      rooms: roomCount,
+      roomDetails: newRoomDetails 
+    }));
+  };
+
+  const handleRoomDetailChange = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      roomDetails: prev.roomDetails.map((room, i) => 
+        i === index ? { ...room, [field]: value } : room
+      )
+    }));
   };
 
 
@@ -63,6 +90,18 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
     if (!formData.checkInDate || !formData.checkOutDate) {
       toast({ title: "Validation Error", description: "Check-in and check-out dates are required", variant: "destructive" });
       return false;
+    }
+    // Validate room details
+    for (let i = 0; i < formData.roomDetails.length; i++) {
+      const room = formData.roomDetails[i];
+      if (!room.roomType.trim()) {
+        toast({ title: "Validation Error", description: `Room ${i + 1} type is required`, variant: "destructive" });
+        return false;
+      }
+      if (!room.unitPrice || room.unitPrice <= 0) {
+        toast({ title: "Validation Error", description: `Room ${i + 1} unit price must be greater than 0`, variant: "destructive" });
+        return false;
+      }
     }
     return true;
   };
@@ -229,7 +268,7 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
             </div>
 
             {/* Room Details */}
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="rooms">Number of Rooms *</Label>
                 <Input
@@ -238,33 +277,40 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
                   min="1"
                   max="20"
                   value={formData.rooms}
-                  onChange={(e) => handleInputChange('rooms', parseInt(e.target.value) || 1)}
+                  onChange={(e) => handleRoomsChange(parseInt(e.target.value) || 1)}
                   className="border-gold/30 focus:ring-gold"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="roomType">Room Type *</Label>
-                <Input
-                  id="roomType"
-                  placeholder="Enter room type (e.g., Deluxe AC Room)"
-                  value={formData.roomType}
-                  onChange={(e) => handleInputChange('roomType', e.target.value)}
-                  className="border-gold/30 focus:ring-gold"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="unitPrice">Unit Price (₹) *</Label>
-                <Input
-                  id="unitPrice"
-                  type="number"
-                  min="0"
-                  value={formData.unitPrice}
-                  onChange={(e) => handleInputChange('unitPrice', parseInt(e.target.value) || 0)}
-                  className="border-gold/30 focus:ring-gold"
-                />
-              </div>
+              {/* Dynamic Room Type and Price Fields */}
+              {formData.roomDetails.map((room, index) => (
+                <Card key={index} className="bg-gradient-silver border-gold/30 p-4">
+                  <h4 className="font-medium text-gold mb-4">Room {index + 1} Details</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`roomType-${index}`}>Room Type *</Label>
+                      <Input
+                        id={`roomType-${index}`}
+                        placeholder="e.g., Superior AC, Standard AC"
+                        value={room.roomType}
+                        onChange={(e) => handleRoomDetailChange(index, 'roomType', e.target.value)}
+                        className="border-gold/30 focus:ring-gold"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`unitPrice-${index}`}>Unit Price (₹) *</Label>
+                      <Input
+                        id={`unitPrice-${index}`}
+                        type="number"
+                        min="0"
+                        value={room.unitPrice}
+                        onChange={(e) => handleRoomDetailChange(index, 'unitPrice', parseInt(e.target.value) || 0)}
+                        className="border-gold/30 focus:ring-gold"
+                      />
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
 
             {/* Bill Type & Payment */}
@@ -298,6 +344,25 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
               </div>
             </div>
 
+            {/* Beverages Bill - Only for Check-Out Bills */}
+            {formData.billType === 'Check-Out Bill' && (
+              <div className="space-y-2">
+                <Label htmlFor="beveragesBill" className="flex items-center gap-2 text-gold">
+                  <Calculator className="h-4 w-4" />
+                  Beverages Bill (₹)
+                </Label>
+                <Input
+                  id="beveragesBill"
+                  type="number"
+                  min="0"
+                  value={formData.beveragesBill}
+                  onChange={(e) => handleInputChange('beveragesBill', parseInt(e.target.value) || 0)}
+                  className="border-gold/30 focus:ring-gold"
+                  placeholder="Enter total beverages amount"
+                />
+              </div>
+            )}
+
             {/* Calculations Display */}
             {calculations.days > 0 && (
               <Card className="bg-gradient-silver border-gold/30">
@@ -307,16 +372,31 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
                     Bill Calculations
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p><span className="font-medium">No. of Days:</span> {calculations.days}</p>
-                    <p><span className="font-medium">Rooms:</span> {formData.rooms}</p>
-                    <p><span className="font-medium">Rate per day:</span> ₹{formData.unitPrice.toLocaleString()}</p>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p><span className="font-medium">No. of Days:</span> {calculations.days}</p>
+                      <p><span className="font-medium">Total Rooms:</span> {formData.rooms}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-lg"><span className="font-bold">Subtotal:</span> <span className="text-gold font-bold">₹{calculations.subtotal.toLocaleString()}</span></p>
+                      {formData.billType === 'Check-Out Bill' && formData.beveragesBill > 0 && (
+                        <p><span className="font-medium">Beverages:</span> ₹{formData.beveragesBill.toLocaleString()}</p>
+                      )}
+                      <p><span className="font-medium">Advance Paid:</span> ₹{formData.advancePaid.toLocaleString()}</p>
+                      <p className="text-lg"><span className="font-bold">Balance:</span> <span className="text-primary font-bold">₹{calculations.balance.toLocaleString()}</span></p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-lg"><span className="font-bold">Total:</span> <span className="text-gold font-bold">₹{calculations.total.toLocaleString()}</span></p>
-                    <p><span className="font-medium">Advance Paid:</span> ₹{formData.advancePaid.toLocaleString()}</p>
-                    <p className="text-lg"><span className="font-bold">Balance:</span> <span className="text-primary font-bold">₹{calculations.balance.toLocaleString()}</span></p>
+
+                  {/* Room Details Summary */}
+                  <div className="mt-4 pt-4 border-t border-gold/20">
+                    <h4 className="font-medium text-gold mb-2">Room Breakdown:</h4>
+                    {formData.roomDetails.map((room, index) => (
+                      <div key={index} className="flex justify-between items-center py-1 text-sm">
+                        <span>Room {index + 1}: {room.roomType || 'Not specified'}</span>
+                        <span>₹{room.unitPrice.toLocaleString()} × {calculations.days} days = ₹{(room.unitPrice * calculations.days).toLocaleString()}</span>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

@@ -75,9 +75,9 @@ export const defaultFormData = {
   checkOutDate: '',
   checkOutTime: '',
   rooms: 1,
-  roomType: '',
-  unitPrice: 0,
+  roomDetails: [{ roomType: '', unitPrice: 0 }], // Array to handle multiple room types
   advancePaid: 0,
+  beveragesBill: 0, // New field for beverages
   billType: billTypes[0].name,
   specialRequests: ''
 };
