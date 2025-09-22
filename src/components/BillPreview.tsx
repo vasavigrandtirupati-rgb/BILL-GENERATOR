@@ -273,9 +273,8 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                     <CardTitle className="text-lg">Booking Details</CardTitle>
                   </CardHeader>
                    <CardContent className="space-y-2 text-sm">
-                     <p><span className="font-medium">Check-In:</span> {billData.checkInDate} {billData.checkInTime}</p>
-                     <p><span className="font-medium">Check-Out:</span> {billData.checkOutDate} {billData.checkOutTime}</p>
-                     <p><span className="font-medium">No. of Days:</span> {billData.calculations.days}</p>
+                     <p><span className="font-medium">Main Check-In:</span> {billData.checkInDate} {billData.checkInTime || 'N/A'}</p>
+                     <p><span className="font-medium">Main Check-Out:</span> {billData.checkOutDate} {billData.checkOutTime || 'N/A'}</p>
                      <p><span className="font-medium">Total Rooms:</span> {billData.roomDetails.reduce((total, room) => total + (room.count || 1), 0)}</p>
                    </CardContent>
                 </Card>
@@ -292,32 +291,50 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                        <th className="border border-border px-4 py-3 text-right font-medium">Amount (₹)</th>
                      </tr>
                    </thead>
-                    <tbody>
-                       {billData.roomDetails.map((room, index) => {
-                         // Calculate days for this specific room
-                         let roomDays = billData.calculations.days;
-                         if (room.checkInDate && room.checkOutDate) {
-                           const roomCheckIn = new Date(room.checkInDate);
-                           const roomCheckOut = new Date(room.checkOutDate);
-                           roomDays = Math.max(1, Math.ceil((roomCheckOut.getTime() - roomCheckIn.getTime()) / (1000 * 3600 * 24)));
-                         }
-                         
-                         return (
-                           <tr key={index}>
-                             <td className="border border-border px-4 py-3">
-                               {room.count}× {room.roomType}
-                               {room.checkInDate && room.checkOutDate && (room.checkInDate !== billData.checkInDate || room.checkOutDate !== billData.checkOutDate) && (
-                                 <div className="text-xs text-muted-foreground">
-                                   ({room.checkInDate} to {room.checkOutDate})
-                                 </div>
-                               )}
-                             </td>
-                             <td className="border border-border px-4 py-3 text-center">{roomDays}</td>
-                             <td className="border border-border px-4 py-3 text-right">₹{room.unitPrice.toLocaleString()}</td>
-                             <td className="border border-border px-4 py-3 text-right font-medium">₹{(room.unitPrice * roomDays * (room.count || 1)).toLocaleString()}</td>
-                           </tr>
-                         );
-                       })}
+                     <tbody>
+                        {billData.roomDetails.map((room, index) => {
+                          // Calculate days for this specific room using the same logic as the generator
+                          const checkInDate = room.checkInDate || billData.checkInDate;
+                          const checkOutDate = room.checkOutDate || billData.checkOutDate;
+                          const checkInTime = room.checkInTime || billData.checkInTime || '00:00';
+                          const checkOutTime = room.checkOutTime || billData.checkOutTime || '00:00';
+
+                          const checkInDateTime = new Date(`${checkInDate}T${checkInTime}`);
+                          const checkOutDateTime = new Date(`${checkOutDate}T${checkOutTime}`);
+                          const timeDiffMs = checkOutDateTime.getTime() - checkInDateTime.getTime();
+                          const timeDiffHours = timeDiffMs / (1000 * 3600);
+                          
+                          let roomDays = Math.max(1, Math.ceil(timeDiffMs / (1000 * 3600 * 24)));
+                          
+                          // Apply individual room override if checkout exceeds 28 hours and override is disabled
+                          if (timeDiffHours > 28 && room.overrideExtraDay === false) {
+                            roomDays = Math.max(1, roomDays - 1);
+                          }
+                          
+                          const hasCustomDates = (room.checkInDate && room.checkInDate !== billData.checkInDate) || 
+                                                 (room.checkOutDate && room.checkOutDate !== billData.checkOutDate) ||
+                                                 (room.checkInTime && room.checkInTime !== billData.checkInTime) ||
+                                                 (room.checkOutTime && room.checkOutTime !== billData.checkOutTime);
+                          
+                          return (
+                            <tr key={index}>
+                              <td className="border border-border px-4 py-3">
+                                {room.count}× {room.roomType}
+                                {hasCustomDates && (
+                                  <div className="text-xs text-muted-foreground">
+                                    ({checkInDate} {checkInTime} to {checkOutDate} {checkOutTime})
+                                    {timeDiffHours > 28 && room.overrideExtraDay === false && (
+                                      <div className="text-yellow-600">*Late checkout - no extra day charged</div>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="border border-border px-4 py-3 text-center">{roomDays}</td>
+                              <td className="border border-border px-4 py-3 text-right">₹{room.unitPrice.toLocaleString()}</td>
+                              <td className="border border-border px-4 py-3 text-right font-medium">₹{(room.unitPrice * roomDays * (room.count || 1)).toLocaleString()}</td>
+                            </tr>
+                          );
+                        })}
                       {billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 && (
                         <tr>
                           <td className="border border-border px-4 py-3">Beverages</td>

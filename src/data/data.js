@@ -75,7 +75,16 @@ export const defaultFormData = {
   checkOutDate: '',
   checkOutTime: '',
   rooms: 1,
-  roomDetails: [{ roomType: '', unitPrice: 0, count: 1, checkInDate: '', checkOutDate: '' }], // Array to handle multiple room types
+  roomDetails: [{ 
+    roomType: '', 
+    unitPrice: 0, 
+    count: 1, 
+    checkInDate: '', 
+    checkOutDate: '',
+    checkInTime: '',
+    checkOutTime: '',
+    overrideExtraDay: true
+  }], // Array to handle multiple room types with individual dates and times
   advancePaid: 0,
   beveragesBill: 0, // New field for beverages
   billType: billTypes[0].name,

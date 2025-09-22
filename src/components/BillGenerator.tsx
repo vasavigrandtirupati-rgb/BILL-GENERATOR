@@ -53,17 +53,10 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
       days = Math.max(1, days - 1);
     }
 
-    // Calculate total for all rooms with their individual date ranges
+    // Calculate total for all rooms with their individual date ranges and time considerations
     const roomsTotal = formData.roomDetails.reduce((total, room) => {
-      if (room.checkInDate && room.checkOutDate) {
-        const roomCheckIn = new Date(room.checkInDate);
-        const roomCheckOut = new Date(room.checkOutDate);
-        const roomDays = Math.max(1, Math.ceil((roomCheckOut.getTime() - roomCheckIn.getTime()) / (1000 * 3600 * 24)));
-        return total + (roomDays * room.unitPrice * (room.count || 1));
-      } else {
-        // Fallback to main dates if room doesn't have specific dates
-        return total + (days * room.unitPrice * (room.count || 1));
-      }
+      const roomDays = calculateRoomDays(room);
+      return total + (roomDays * room.unitPrice * (room.count || 1));
     }, 0);
 
     // Add beverages if it's a checkout bill
@@ -72,6 +65,50 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
     const balance = subtotal - formData.advancePaid;
 
     setCalculations({ days, subtotal, tax: 0, total: subtotal, balance, showOverrideToggle });
+  };
+
+  const calculateRoomDays = (room: any) => {
+    const checkInDate = room.checkInDate || formData.checkInDate;
+    const checkOutDate = room.checkOutDate || formData.checkOutDate;
+    const checkInTime = room.checkInTime || formData.checkInTime || '00:00';
+    const checkOutTime = room.checkOutTime || formData.checkOutTime || '00:00';
+
+    if (!checkInDate || !checkOutDate) return 1;
+
+    const checkInDateTime = new Date(`${checkInDate}T${checkInTime}`);
+    const checkOutDateTime = new Date(`${checkOutDate}T${checkOutTime}`);
+    const timeDiffMs = checkOutDateTime.getTime() - checkInDateTime.getTime();
+    const timeDiffHours = timeDiffMs / (1000 * 3600);
+    
+    let days = Math.max(1, Math.ceil(timeDiffMs / (1000 * 3600 * 24)));
+    
+    // Apply individual room override if checkout exceeds 28 hours and override is disabled
+    if (timeDiffHours > 28 && room.overrideExtraDay === false) {
+      days = Math.max(1, days - 1);
+    }
+    
+    return days;
+  };
+
+  const getRoomExtraTimeInfo = (roomIndex: number) => {
+    const room = formData.roomDetails[roomIndex];
+    const checkInDate = room.checkInDate || formData.checkInDate;
+    const checkOutDate = room.checkOutDate || formData.checkOutDate;
+    const checkInTime = room.checkInTime || formData.checkInTime || '00:00';
+    const checkOutTime = room.checkOutTime || formData.checkOutTime || '00:00';
+
+    if (!checkInDate || !checkOutDate) {
+      return { showOverrideToggle: false, extraHours: 0 };
+    }
+
+    const checkInDateTime = new Date(`${checkInDate}T${checkInTime}`);
+    const checkOutDateTime = new Date(`${checkOutDate}T${checkOutTime}`);
+    const timeDiffHours = (checkOutDateTime.getTime() - checkInDateTime.getTime()) / (1000 * 3600);
+    
+    const showOverrideToggle = timeDiffHours > 28;
+    const extraHours = Math.max(0, timeDiffHours - 24);
+    
+    return { showOverrideToggle, extraHours };
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -85,7 +122,10 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
       unitPrice: 0, 
       count: roomCount,
       checkInDate: formData.checkInDate,
-      checkOutDate: formData.checkOutDate
+      checkOutDate: formData.checkOutDate,
+      checkInTime: formData.checkInTime,
+      checkOutTime: formData.checkOutTime,
+      overrideExtraDay: true
     }];
     setFormData(prev => ({ 
       ...prev, 
@@ -94,7 +134,10 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
         ...room, 
         count: Math.min(room.count || 1, roomCount),
         checkInDate: room.checkInDate || formData.checkInDate,
-        checkOutDate: room.checkOutDate || formData.checkOutDate
+        checkOutDate: room.checkOutDate || formData.checkOutDate,
+        checkInTime: room.checkInTime || formData.checkInTime,
+        checkOutTime: room.checkOutTime || formData.checkOutTime,
+        overrideExtraDay: room.overrideExtraDay !== undefined ? room.overrideExtraDay : true
       }))
     }));
   };
@@ -109,7 +152,10 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
           unitPrice: 0, 
           count: Math.min(1, remainingRooms),
           checkInDate: formData.checkInDate,
-          checkOutDate: formData.checkOutDate
+          checkOutDate: formData.checkOutDate,
+          checkInTime: formData.checkInTime,
+          checkOutTime: formData.checkOutTime,
+          overrideExtraDay: true
         }]
       }));
     }
@@ -407,28 +453,72 @@ const BillGenerator: React.FC<BillGeneratorProps> = ({ onBillGenerate }) => {
                      </div>
                      
                      {/* Individual room date ranges */}
-                     <div className="grid md:grid-cols-2 gap-4 bg-accent/10 p-3 rounded-lg">
-                       <div className="space-y-2">
-                         <Label htmlFor={`roomCheckIn-${index}`} className="text-sm">Check-In Date for this room type</Label>
-                         <Input
-                           id={`roomCheckIn-${index}`}
-                           type="date"
-                           value={room.checkInDate || formData.checkInDate}
-                           onChange={(e) => handleRoomDetailChange(index, 'checkInDate', e.target.value)}
-                           className="border-gold/30 focus:ring-gold text-sm"
-                         />
-                       </div>
-                       <div className="space-y-2">
-                         <Label htmlFor={`roomCheckOut-${index}`} className="text-sm">Check-Out Date for this room type</Label>
-                         <Input
-                           id={`roomCheckOut-${index}`}
-                           type="date"
-                           value={room.checkOutDate || formData.checkOutDate}
-                           onChange={(e) => handleRoomDetailChange(index, 'checkOutDate', e.target.value)}
-                           className="border-gold/30 focus:ring-gold text-sm"
-                         />
-                       </div>
-                     </div>
+                     <div className="bg-accent/10 p-3 rounded-lg space-y-4">
+                        <div className="grid md:grid-cols-4 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor={`roomCheckIn-${index}`} className="text-sm">Check-In Date</Label>
+                            <Input
+                              id={`roomCheckIn-${index}`}
+                              type="date"
+                              value={room.checkInDate || formData.checkInDate}
+                              onChange={(e) => handleRoomDetailChange(index, 'checkInDate', e.target.value)}
+                              className="border-gold/30 focus:ring-gold text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`roomCheckInTime-${index}`} className="text-sm">Check-In Time</Label>
+                            <Input
+                              id={`roomCheckInTime-${index}`}
+                              type="time"
+                              value={room.checkInTime || formData.checkInTime}
+                              onChange={(e) => handleRoomDetailChange(index, 'checkInTime', e.target.value)}
+                              className="border-gold/30 focus:ring-gold text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`roomCheckOut-${index}`} className="text-sm">Check-Out Date</Label>
+                            <Input
+                              id={`roomCheckOut-${index}`}
+                              type="date"
+                              value={room.checkOutDate || formData.checkOutDate}
+                              onChange={(e) => handleRoomDetailChange(index, 'checkOutDate', e.target.value)}
+                              className="border-gold/30 focus:ring-gold text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`roomCheckOutTime-${index}`} className="text-sm">Check-Out Time</Label>
+                            <Input
+                              id={`roomCheckOutTime-${index}`}
+                              type="time"
+                              value={room.checkOutTime || formData.checkOutTime}
+                              onChange={(e) => handleRoomDetailChange(index, 'checkOutTime', e.target.value)}
+                              className="border-gold/30 focus:ring-gold text-sm"
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Per-room override toggle */}
+                        {getRoomExtraTimeInfo(index).showOverrideToggle && (
+                          <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-yellow-800">Late checkout detected</p>
+                              <p className="text-xs text-yellow-600">
+                                Checkout is {getRoomExtraTimeInfo(index).extraHours.toFixed(1)} hours after 24hr limit
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor={`override-${index}`} className="text-sm text-yellow-800">Charge extra day?</Label>
+                              <input
+                                id={`override-${index}`}
+                                type="checkbox"
+                                checked={room.overrideExtraDay !== false}
+                                onChange={(e) => handleRoomDetailChange(index, 'overrideExtraDay', e.target.checked)}
+                                className="rounded border-yellow-300"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                    </div>
                 </Card>
               ))}
