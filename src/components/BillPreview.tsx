@@ -124,14 +124,20 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                </tr>
              </thead>
              <tbody>
-                ${billData.roomDetails.map((room, index) => 
-                  `<tr>
-                    <td>${room.count}× ${room.roomType}</td>
-                    <td>${billData.calculations.days}</td>
-                    <td>₹${room.unitPrice.toLocaleString()}</td>
-                    <td>₹${(room.unitPrice * billData.calculations.days * (room.count || 1)).toLocaleString()}</td>
-                  </tr>`
-                ).join('')}
+                 ${billData.roomDetails.map((room, index) => {
+                   let roomDays = billData.calculations.days;
+                   if (room.checkInDate && room.checkOutDate) {
+                     const roomCheckIn = new Date(room.checkInDate);
+                     const roomCheckOut = new Date(room.checkOutDate);
+                     roomDays = Math.max(1, Math.ceil((roomCheckOut.getTime() - roomCheckIn.getTime()) / (1000 * 3600 * 24)));
+                   }
+                   return `<tr>
+                     <td>${room.count}× ${room.roomType}${room.checkInDate && room.checkOutDate && (room.checkInDate !== billData.checkInDate || room.checkOutDate !== billData.checkOutDate) ? `<br><small>(${room.checkInDate} to ${room.checkOutDate})</small>` : ''}</td>
+                     <td>${roomDays}</td>
+                     <td>₹${room.unitPrice.toLocaleString()}</td>
+                     <td>₹${(room.unitPrice * roomDays * (room.count || 1)).toLocaleString()}</td>
+                   </tr>`;
+                 }).join('')}
                ${billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 ? 
                  `<tr>
                    <td>Beverages</td>
@@ -286,24 +292,41 @@ const BillPreview: React.FC<BillPreviewProps> = ({ billData }) => {
                        <th className="border border-border px-4 py-3 text-right font-medium">Amount (₹)</th>
                      </tr>
                    </thead>
-                   <tbody>
-                      {billData.roomDetails.map((room, index) => (
-                        <tr key={index}>
-                          <td className="border border-border px-4 py-3">{room.count}× {room.roomType}</td>
-                          <td className="border border-border px-4 py-3 text-center">{billData.calculations.days}</td>
-                          <td className="border border-border px-4 py-3 text-right">₹{room.unitPrice.toLocaleString()}</td>
-                          <td className="border border-border px-4 py-3 text-right font-medium">₹{(room.unitPrice * billData.calculations.days * (room.count || 1)).toLocaleString()}</td>
+                    <tbody>
+                       {billData.roomDetails.map((room, index) => {
+                         // Calculate days for this specific room
+                         let roomDays = billData.calculations.days;
+                         if (room.checkInDate && room.checkOutDate) {
+                           const roomCheckIn = new Date(room.checkInDate);
+                           const roomCheckOut = new Date(room.checkOutDate);
+                           roomDays = Math.max(1, Math.ceil((roomCheckOut.getTime() - roomCheckIn.getTime()) / (1000 * 3600 * 24)));
+                         }
+                         
+                         return (
+                           <tr key={index}>
+                             <td className="border border-border px-4 py-3">
+                               {room.count}× {room.roomType}
+                               {room.checkInDate && room.checkOutDate && (room.checkInDate !== billData.checkInDate || room.checkOutDate !== billData.checkOutDate) && (
+                                 <div className="text-xs text-muted-foreground">
+                                   ({room.checkInDate} to {room.checkOutDate})
+                                 </div>
+                               )}
+                             </td>
+                             <td className="border border-border px-4 py-3 text-center">{roomDays}</td>
+                             <td className="border border-border px-4 py-3 text-right">₹{room.unitPrice.toLocaleString()}</td>
+                             <td className="border border-border px-4 py-3 text-right font-medium">₹{(room.unitPrice * roomDays * (room.count || 1)).toLocaleString()}</td>
+                           </tr>
+                         );
+                       })}
+                      {billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 && (
+                        <tr>
+                          <td className="border border-border px-4 py-3">Beverages</td>
+                          <td className="border border-border px-4 py-3 text-center">-</td>
+                          <td className="border border-border px-4 py-3 text-right">-</td>
+                          <td className="border border-border px-4 py-3 text-right font-medium">₹{billData.beveragesBill.toLocaleString()}</td>
                         </tr>
-                      ))}
-                     {billData.billType === 'Check-Out Bill' && billData.beveragesBill > 0 && (
-                       <tr>
-                         <td className="border border-border px-4 py-3">Beverages</td>
-                         <td className="border border-border px-4 py-3 text-center">-</td>
-                         <td className="border border-border px-4 py-3 text-right">-</td>
-                         <td className="border border-border px-4 py-3 text-right font-medium">₹{billData.beveragesBill.toLocaleString()}</td>
-                       </tr>
-                     )}
-                   </tbody>
+                      )}
+                    </tbody>
                  </table>
                </div>
 
